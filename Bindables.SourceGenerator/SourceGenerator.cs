@@ -31,7 +31,7 @@ namespace BindableSourceGenerator
                 foreach (var bindableTarget in syntaxTarget.BindableTargets)
                 {
                     bindablePropertiesBuilder.AppendLine($@"
-                        public {bindableTarget.TypeName} {bindableTarget.Name}
+                        {bindableTarget.Visibility} {bindableTarget.TypeName} {bindableTarget.Name}
                         {{
                             get => {bindableTarget.Name}Bindable.Value;
                             set => {bindableTarget.Name}Bindable.Value = value;
@@ -52,6 +52,7 @@ namespace BindableSourceGenerator
         {
             public string Name;
             public string TypeName;
+            public string Visibility;
         }
 
         class SyntaxTarget
@@ -89,6 +90,7 @@ namespace BindableSourceGenerator
                             {
                                 Name = propertyName,
                                 TypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                                Visibility = field.DeclaredAccessibility == Accessibility.Public ? "public" : "protected",
                             });
                         }
                     }
