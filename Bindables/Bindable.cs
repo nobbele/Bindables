@@ -96,4 +96,8 @@ public class Bindable<T>
             newValue = newValue,
         });
     }
+
+#pragma warning disable CA2245
+    public void ForceUpdate() => Value = Value;
+#pragma warning restore CA2245
 }
