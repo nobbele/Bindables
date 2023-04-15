@@ -23,7 +23,7 @@ namespace BindableSourceGenerator
             context.RegisterSourceOutput(syntaxTargets, (spc, syntaxTarget) =>
             {
                 var safeFilePath = syntaxTarget.FilePath.Replace("/", "_").Replace("\\", "_");
-                var hintName = $"{syntaxTarget.HintName}_bindablesGen_{safeFilePath}.cs";
+                var hintName = $"{safeFilePath.GetHashCode():X}_{syntaxTarget.HintName}.BindablesDecl";
 
                 // TODO use syntax factory
 
@@ -31,20 +31,20 @@ namespace BindableSourceGenerator
                 foreach (var bindableTarget in syntaxTarget.BindableTargets)
                 {
                     bindablePropertiesBuilder.AppendLine($@"
-                        {bindableTarget.Visibility} {bindableTarget.TypeName} {bindableTarget.Name}
-                        {{
-                            get => {bindableTarget.Name}Bindable.Value;
-                            set => {bindableTarget.Name}Bindable.Value = value;
-                        }}
-                    ");
+    {bindableTarget.Visibility} {bindableTarget.TypeName} {bindableTarget.Name}
+    {{
+        get => {bindableTarget.Name}Bindable.Value;
+        set => {bindableTarget.Name}Bindable.Value = value;
+    }}"
+                    );
                 }
 
-                spc.AddSource(hintName, $@"
-                    public partial class {syntaxTarget.Name}
-                    {{
-                        {bindablePropertiesBuilder}
-                    }}
-                ");
+                spc.AddSource($"{hintName}", $@"
+public partial class {syntaxTarget.Name}
+{{
+    {bindablePropertiesBuilder}
+}}"
+                );
             });
         }
 
@@ -71,32 +71,34 @@ namespace BindableSourceGenerator
                 Name = symbol.Name;
                 HintName = symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat).Replace('<', '{').Replace('>', '}');
 
-                foreach (var member in symbol.GetMembers())
+                var fields = classSyntax.DescendantNodes().OfType<FieldDeclarationSyntax>();
+                foreach (var fieldSyntax in fields)
                 {
-                    if (member is IFieldSymbol field)
+                    var field = (IFieldSymbol)semanticModel.GetDeclaredSymbol(fieldSyntax.Declaration.Variables.First());
+                    if (field.Name.EndsWith("Bindable"))
                     {
-                        if (field.Name.EndsWith("Bindable"))
+                        if (field.Type.Name != "Bindable")
                         {
-                            if (field.Type.Name != "Bindable")
-                            {
-                                throw new System.Exception("Bindable fields need to have a Bindable type.");
-                            }
-
-                            var propertyName = field.Name.Replace("Bindable", string.Empty);
-                            var fieldType = field.Type as INamedTypeSymbol;
-                            var targetType = fieldType.TypeArguments[0];
-
-                            BindableTargets.Add(new BindableTarget()
-                            {
-                                Name = propertyName,
-                                TypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                                Visibility = field.DeclaredAccessibility == Accessibility.Public ? "public" : "protected",
-                            });
+                            throw new System.Exception("Bindable fields need to have a Bindable type.");
                         }
+
+                        var propertyName = field.Name.Replace("Bindable", string.Empty);
+                        var fieldType = field.Type as INamedTypeSymbol;
+                        var targetType = fieldType.TypeArguments[0];
+
+                        BindableTargets.Add(new BindableTarget()
+                        {
+                            Name = propertyName,
+                            TypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                            Visibility = field.DeclaredAccessibility == Accessibility.Public ? "public" : "protected",
+                        });
                     }
                 }
             }
         }
+
+        // static bool ContainsMemberWithName(INamedTypeSymbol symbol, string name)
+        //     => symbol.GetMembers(name).Length > 0;
 
         static bool IsValidTarget(SyntaxNode syntaxNode)
             => syntaxNode is ClassDeclarationSyntax classSyntax
