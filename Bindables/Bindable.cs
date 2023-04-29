@@ -4,23 +4,29 @@ namespace Bindables;
 /// Bindable data container.
 /// </summary>
 /// <typeparam name="T">Type of data to bind</typeparam>
-public class Bindable<T>
+public class Bindable<T> : IBindable<T>
 {
     /// <summary>
     /// Called when the value changes.
     /// </summary>
     public event Action<ValueChangedEvent<T>>? ValueChanged;
 
+    object? IBindable.Value
+    {
+        get => value;
+        set
+        {
+            SetValue((T?)value, this);
+        }
+    }
+
     /// <summary>
     /// Sets the value of this bindable; notifies and propogates the update to this and any other bound bindables.
     /// </summary>
     public T? Value
     {
-        get => value;
-        set
-        {
-            SetValue(value, this);
-        }
+        get => (T?)(this as IBindable).Value;
+        set => (this as IBindable).Value = value;
     }
 
     private T? value;
