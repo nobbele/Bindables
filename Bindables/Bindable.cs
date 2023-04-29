@@ -82,6 +82,8 @@ public class Bindable<T> : IBindable<T>
         }
     }
 
+    public BindableProxy<K> AsProxy<K>() => new(this);
+
     void SetValue(T? newValue, Bindable<T> source)
     {
         var oldValue = value;
